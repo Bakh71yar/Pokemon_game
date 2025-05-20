@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Моя коллекция покемонов</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body
+    class="bg-gradient-to-br from-indigo-200 to-blue-300 min-h-screen flex flex-col items-center py-10"
+  >
+    <a
+      href="index.html"
+      class="absolute top-5 right-4 bg-white text-black px-4 py-2 rounded shadow hover:bg-gray-100 transition"
+    >
+      Домой
+    </a>
+    <div
+      class="absolute top-5 left-5 bg-white px-4 py-2 rounded-xl shadow-lg text-xl font-bold"
+    >
+      Мой левел: <span id="user-level">0</span>
+    </div>
+
+    <h1 class="text-3xl font-bold mb-6">Моя коллекция Покемонов</h1>
+    <div
+      id="collection"
+      class="flex flex-wrap justify-center gap-6 max-w-5xl w-full px-4"
+    ></div>
+
+    <script>
+      const collectionEl = document.getElementById("collection");
+      const levelDisplay = document.getElementById("user-level");
+      let userLevel = parseInt(localStorage.getItem("userLevel")) || 0;
+      levelDisplay.textContent = userLevel;
+      const MAX_POWER_BOOST = 5;
+
+      function loadBag() {
+        return JSON.parse(localStorage.getItem("bag")) || [];
+      }
+      function saveBag(bag) {
+        localStorage.setItem("bag", JSON.stringify(bag));
+      }
+
+      function renderCollection() {
+        const bag = loadBag();
+        collectionEl.innerHTML = "";
+        if (bag.length === 0) {
+          collectionEl.innerHTML =
+            '<p class="text-xl font-semibold text-gray-700">Коллекция пуста</p>';
+          return;
+        }
+        bag.forEach((pokemon, index) => {
+          const card = document.createElement("div");
+          card.className =
+            "bg-white rounded-xl shadow-md p-4 w-52 flex flex-col items-center";
+
+          card.innerHTML = `
+            <img src="${pokemon.image}" alt="${pokemon.name}" class="w-24 h-24 mb-2" />
+            <h3 class="text-lg font-bold">${pokemon.name}</h3>
+            <p>Сила: <span class="power-value">${pokemon.power}</span></p>
+            <div class="flex gap-2 mt-3">
+              <button data-index="${index}" class="btn-decrease bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600" title="Уменьшить силу">-</button>
+              <button data-index="${index}" class="btn-increase bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600" title="Увеличить силу">+</button>
+            </div>
+            <button
+              data-index="${index}"
+              class="mt-3 bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-700 release-btn"
+            >
+              Отпустить
+            </button>
+          `;
+
+          collectionEl.appendChild(card);
+        });
+      }
+      collectionEl.addEventListener("click", (e) => {
+        const bag = loadBag();
+
+        if (e.target.classList.contains("release-btn")) {
+          const idx = parseInt(e.target.dataset.index);
+          userLevel += bag[idx].power;
+          localStorage.setItem("userLevel", userLevel);
+          levelDisplay.textContent = userLevel;
+          bag.splice(idx, 1);
+          saveBag(bag);
+          renderCollection();
+        }
+
+        if (e.target.classList.contains("btn-increase")) {
+          const idx = parseInt(e.target.dataset.index);
+          const pokemon = bag[idx];
+          if (
+            userLevel > 0 &&
+            pokemon.power < pokemon.basePower + MAX_POWER_BOOST
+          ) {
+            pokemon.power += 1;
+            userLevel -= 1;
+            localStorage.setItem("userLevel", userLevel);
+            levelDisplay.textContent = userLevel;
+            saveBag(bag);
+            renderCollection();
+          } else {
+            alert(
+              userLevel === 0
+                ? "Недостаточно уровня для усиления покемона."
+                : "Максимальное усиление покемона достигнуто."
+            );
+          }
+        }
+
+        if (e.target.classList.contains("btn-decrease")) {
+          const idx = parseInt(e.target.dataset.index);
+          const pokemon = bag[idx];
+          if (pokemon.power > pokemon.basePower) {
+            pokemon.power -= 1;
+            userLevel += 1;
+            localStorage.setItem("userLevel", userLevel);
+            levelDisplay.textContent = userLevel;
+            saveBag(bag);
+            renderCollection();
+          } else {
+            alert("Нельзя уменьшить силу ниже базовой.");
+          }
+        }
+      });
+      function normalizeBag() {
+        let bag = loadBag();
+        let changed = false;
+        bag = bag.map((p) => {
+          if (p.basePower === undefined) {
+            p.basePower = p.power;
+            changed = true;
+          }
+          return p;
+        });
+        if (changed) saveBag(bag);
+      }
+      normalizeBag();
+      renderCollection();
+    </script>
+  </body>
+</html>

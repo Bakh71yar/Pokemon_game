@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Сразись с покемоном</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @keyframes sway {
+        0%,
+        100% {
+          transform: rotate(0deg);
+        }
+        50% {
+          transform: rotate(5deg);
+        }
+      }
+      .sway {
+        animation: sway 2s ease-in-out infinite;
+      }
+      .fade-scale {
+        animation: fadeInScale 0.7s ease forwards;
+        opacity: 0;
+        transform: scale(0.5);
+      }
+      @keyframes fadeInScale {
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body
+    class="bg-gradient-to-br from-indigo-200 to-blue-300 min-h-screen flex items-center justify-center relative"
+  >
+    <a
+      href="index.html"
+      class="absolute top-5 right-4 bg-white text-black px-4 py-2 rounded shadow hover:bg-gray-100 transition"
+    >
+      Домой
+    </a>
+    <div
+      class="absolute top-5 left-5 bg-white px-4 py-2 rounded-xl shadow-lg text-xl font-bold"
+    >
+      Мой левел: <span id="user-level">0</span>
+    </div>
+    <div
+      class="absolute top-20 left-5 bg-white px-4 py-2 rounded-xl shadow-lg text-xl font-bold"
+    >
+      Этап: <span id="user-stage">1</span>
+    </div>
+    <div class="bg-white p-8 rounded-xl shadow-xl text-center w-full max-w-md">
+      <h1 class="text-2xl font-bold mb-4">Битва с Покемоном!</h1>
+      <div
+        id="pokemon-card"
+        class="hidden flex flex-col items-center justify-center mb-4 sway"
+      >
+        <img id="pokemon-img" src="" alt="Покемон" class="w-32 h-32 mb-2" />
+        <p id="pokemon-name" class="text-lg font-bold"></p>
+        <p class="text-sm">Сила: <span id="chosen-level"></span></p>
+      </div>
+      <p class="text-lg mb-2" id="dice-values">🎲 Кубики: ?</p>
+      <button
+        id="fight-btn"
+        class="bg-purple-600 text-white px-5 py-2 rounded hover:bg-purple-700 transition"
+      >
+        Кинуть кубики
+      </button>
+
+      <p id="result-msg" class="mt-4 text-lg font-medium"></p>
+      <div id="choice-btns" class="hidden mt-6 flex justify-center gap-x-6">
+        <button
+          id="add-to-bag"
+          class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600"
+        >
+          Поймать
+        </button>
+        <button
+          id="retry"
+          class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
+        >
+          Сыграть снова
+        </button>
+      </div>
+    </div>
+
+    <script>
+      const fightBtn = document.getElementById("fight-btn");
+      const diceValues = document.getElementById("dice-values");
+      const resultMsg = document.getElementById("result-msg");
+      const chosenLevelDisplay = document.getElementById("chosen-level");
+      const choiceBtns = document.getElementById("choice-btns");
+      const addToBagBtn = document.getElementById("add-to-bag");
+      const retryBtn = document.getElementById("retry");
+      const levelDisplay = document.getElementById("user-level");
+      const stageLevel = document.getElementById("user-stage");
+      const pokemonCard = document.getElementById("pokemon-card");
+      const pokemonImg = document.getElementById("pokemon-img");
+      const pokemonName = document.getElementById("pokemon-name");
+      let chosenLevel = 0;
+      let userLevel = parseInt(localStorage.getItem("userLevel")) || 0;
+      levelDisplay.textContent = userLevel;
+      let userStage = 1;
+      stageLevel.textContent = userStage;
+      let currentPokemon = null;
+
+      function rollDice() {
+        return Math.floor(Math.random() * 6) + 1;
+      }
+
+      async function getRandomPokemon() {
+        const id = Math.floor(Math.random() * 150) + 1;
+        const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+        const data = await res.json();
+        return {
+          name: data.name.charAt(0).toUpperCase() + data.name.slice(1),
+          image: data.sprites.front_default,
+        };
+      }
+
+      fightBtn.addEventListener("click", async () => {
+        const rolls = [rollDice(), rollDice(), rollDice()];
+        const sum = rolls.reduce((a, b) => a + b, 0);
+        diceValues.textContent = `🎲 Кубики: ${rolls.join(" + ")} = ${sum}`;
+
+        if (userLevel > 36) {
+          userStage = 3;
+        } else if (userLevel > 18) {
+          userStage = 2;
+        } else {
+          userStage = 1;
+        }
+        stageLevel.textContent = userStage;
+        let maxPower = 18 * userStage;
+        chosenLevel = Math.floor(Math.random() * maxPower) + 1;
+        chosenLevelDisplay.textContent = chosenLevel;
+        currentPokemon = await getRandomPokemon();
+        pokemonCard.classList.remove("hidden");
+        pokemonImg.src = currentPokemon.image;
+        pokemonName.textContent = currentPokemon.name;
+
+        if (sum >= chosenLevel) {
+          const levelGain = sum - chosenLevel;
+          userLevel += levelGain;
+          localStorage.setItem("userLevel", userLevel);
+          levelDisplay.textContent = userLevel;
+
+          resultMsg.textContent = " Победа, Молодец!";
+          choiceBtns.classList.remove("hidden");
+          addToBagBtn.classList.remove("hidden");
+          retryBtn.classList.remove("hidden");
+        } else {
+          resultMsg.textContent = "Ты проиграл. Попробуй сыграть снова";
+          choiceBtns.classList.remove("hidden");
+          addToBagBtn.classList.add("hidden");
+          retryBtn.classList.remove("hidden");
+        }
+      });
+      retryBtn.addEventListener("click", () => {
+        resultMsg.textContent = "";
+        diceValues.textContent = "🎲 Кубики: ?";
+        chosenLevelDisplay.textContent = "?";
+        pokemonCard.classList.add("hidden");
+        choiceBtns.classList.add("hidden");
+      });
+      addToBagBtn.addEventListener("click", () => {
+        const bag = JSON.parse(localStorage.getItem("bag")) || [];
+        bag.push({
+          name: currentPokemon.name,
+          image: currentPokemon.image,
+          power: chosenLevel,
+        });
+        localStorage.setItem("bag", JSON.stringify(bag));
+
+        alert("Покемон добавлен в коллекцию!");
+        resultMsg.textContent = "";
+        diceValues.textContent = "🎲 Кубики: ?";
+        chosenLevelDisplay.textContent = "?";
+        pokemonCard.classList.add("hidden");
+        choiceBtns.classList.add("hidden");
+      });
+    </script>
+  </body>
+</html>
